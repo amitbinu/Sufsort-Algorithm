@@ -1,0 +1,380 @@
+%include "asm_io.inc"
+global asm_main
+section .data
+
+ermsg: db 'ERROR: The number of line arguments is not 2', 0
+
+ermsg2: db "ERROR:  The length of the string is not between 1 and 30", 0
+
+ermsg3: db 'ERROR: The characters in the 2nd arguement should not contain anything other than "0", "1" or "2"', 0
+
+printmsg: db 'sorted suffixes:', 0
+
+section .bss
+
+argc: resb 1
+N: resd 1
+X: resb 30
+level: resb 1
+inputstring: resb 30
+i: resd 1
+j: resd 1
+n: resd 1
+m: resd 1
+k: resd 1
+o: resd 1
+f: resb 1
+y: resd 30
+j1: resd 1
+k1: resd 1
+t: resd 1
+fed: resd 1
+i1: resd 1
+
+
+section .text
+
+sufcmp:
+   enter 0,0
+   pusha
+   mov eax, [N]
+   mov [n], eax
+   mov eax, [i]
+   sub [n], eax
+
+   mov [m], eax
+   mov eax, [j]
+   sub [m], eax
+
+   mov eax, [m]
+   cmp [n], eax
+   jle n_to_k
+   mov eax, [m]
+   mov [k], eax
+   mov [o], dword 0
+   jmp loop_for_o
+
+   n_to_k:
+      mov eax, [n]
+      mov [k], eax
+      mov [o], dword 0
+      jmp loop_for_o   
+
+   loop_for_o:
+      mov eax, [k]
+      cmp [o], eax
+      jge loop_end
+         mov eax, [o]
+         add eax, [i]
+         mov edx, X
+         mov al, byte [edx+eax]
+         mov [f], al
+         mov eax, [o]
+         add eax, [j]
+         mov edx, X
+         mov al, byte [edx+eax]
+         cmp [f], al
+         jl return_1
+            cmp [f], al
+            jg return_o1
+               add [o], dword 1            
+               jmp loop_for_o
+
+   loop_end:
+     mov eax, [m]
+     cmp [n], eax
+     jl return_1
+        jmp return_o1
+
+     
+   return_1:
+      popa
+      mov eax, dword -1
+      leave
+      ret
+   return_o1:
+      popa
+      mov eax, dword 1
+      leave
+      ret
+
+
+
+asm_main:
+   enter 0,0
+   pusha
+   mov eax, dword [ebp+8]		; [ebp + 8] contains the number of arguements
+
+   mov [argc], eax
+
+   CHECK2ARGS: cmp dword [argc], dword 2
+
+   jnz ERRORMSG1			; if number of arguements are not 0, then it will jump to ERRORMSG1, where an error mesaage is printed
+      
+      mov eax, dword [ebp+12]
+      add eax, 4
+      mov ebx, dword [eax]		; ebx contains the 2nd line arguement
+       
+      mov [inputstring], dword ebx      ; inputstring contains the address of 2nd line arguement
+     
+      jmp CHECK_STRING_LENGTH
+      
+      popa
+      leave
+      ret
+   
+   CHECK_STRING_LENGTH:
+      mov ecx, 0
+      mov eax, 0
+      mov eax, ebx   
+      LOOP1: cmp byte [eax], byte 0
+      je string_length
+         inc eax
+         inc ecx
+         jmp LOOP1
+         
+      string_length:
+         mov [N], dword ecx			; N contains the address of string length and ecx contains the string length
+    
+         cmp ecx, dword 1
+         jnge ERRORMSG2
+            cmp ecx, dword 30
+            jnle ERRORMSG2
+               jmp CHARACTER_CHECK
+  
+   CHARACTER_CHECK:
+     
+      
+      mov ecx, 0
+      mov eax, 0
+      
+      mov eax, ebx
+      
+      LOOP3:
+      cmp ecx, dword [N]
+      je ARRAY
+         jmp CHECK_0
+      
+      CHECK_0:
+         cmp byte [eax], byte '0'
+         je ADD
+            jmp CHECK_1
+
+      CHECK_1:
+         cmp byte [eax], byte '1'
+         je ADD
+            jmp CHECK_2
+
+      CHECK_2:
+         cmp byte [eax], byte '2'
+         je ADD
+            jmp ERRORMSG3
+
+      ADD:
+         inc ecx
+         inc eax
+         jmp LOOP3
+
+   ARRAY:
+      mov ecx, 0
+      mov eax, 0
+      mov ecx, X
+      mov eax, dword [ebp+12]
+      mov ebx, dword [eax+4]
+      mov eax, 0
+      mov eax, dword [N]
+      mov [i], dword 0
+      LOOP8: cmp [i], eax
+      jge print_array
+      
+         mov al, byte[ebx]
+	 mov byte[ecx], al
+         add ecx, dword 1
+         add ebx, dword 1
+         add [i], dword 1
+         jmp LOOP8
+         
+   print_array:
+      mov eax, X
+      call print_string
+      call print_nl
+      
+      jmp bubble_sort
+   
+   bubble_sort:
+      mov eax, 0
+      mov [i], dword 0
+      mov edx, dword [N]
+      mov ecx, y
+
+      y_LOOP:
+      cmp [i], edx
+      jge LOOP_for_i
+
+         
+         
+         mov eax, [i]
+         mov [ecx], eax
+         add ecx, dword 4
+         add [i], dword 1
+         
+         jmp y_LOOP
+         			
+      LOOP_for_i:
+
+      mov eax, [N]
+      mov [i1], eax
+      mov eax, dword 0
+      jmp LOOP_for_real_i
+      
+      LOOP_for_real_i:
+      mov eax, [i1]
+      cmp eax, dword 0
+      
+      je final_print
+         
+         
+         mov [j1], dword 1
+         jmp LOOP_for_j
+
+      LOOP_for_j:
+         mov ecx, [i1]
+         cmp [j1], ecx
+         jge loop_to_change
+
+            mov ecx, [j1]
+            mov eax, dword 4
+            mul ecx
+            sub eax, dword 4
+            mov ebx, [y+eax]
+            
+            mov [i], ebx
+            
+            mov ecx, [j1]
+            mov eax, dword 4
+            mul ecx
+            mov ebx, [y+eax]
+                    
+            mov [j], ebx
+              
+            
+            call sufcmp
+             
+                  
+            mov [k1], eax       ; k1 = value of sufcmp 
+            
+            cmp eax, dword 0
+            jle loop_to_change_j
+               mov edx, [i]           
+               mov [t], edx
+
+               mov ebx, [j1]
+               mov eax, dword 4
+               mul ebx               
+               mov edx, [y+eax]
+
+               
+               mov [fed], edx    ; fed = y(4j) 
+                            
+
+               mov ebx, [j1]
+               mov eax, dword 4
+               mul ebx
+               sub eax, dword 4 ; eax = 4*j -4 
+               
+              ; mov ecx, [y+eax]
+
+              ; add ecx, eax ; y[4*j - 4]  NOT SURE ABOUT THIS STEP
+               
+               mov ecx, [fed]
+               mov [y+eax], ecx
+
+               mov ecx, y
+               mov ebx, [j1]
+               mov eax, 4
+               mul ebx
+            
+
+               mov ecx, [t]
+               mov [y+eax], ecx     ; y[4*j] = t 
+                                       
+               jmp loop_to_change_j
+;*****************************************    
+                              
+
+            
+
+      loop_to_change:
+         sub [i1], dword 1
+        
+         jmp LOOP_for_real_i
+         
+      loop_to_change_j:        
+         add [j1], dword 1
+  
+         jmp LOOP_for_j
+   
+   
+   final_print:
+        mov eax, printmsg
+        call print_string
+        
+        ;;;;;;;;;;;;;;;;;;;;;;;;;
+
+        mov ecx, dword -1
+	jmp END_LOOP
+
+   END_LOOP:
+
+	call print_nl
+        add ecx, 1
+            
+	cmp ecx, [N]
+        jge end
+           mov edx, ecx 
+           mov eax, dword 4
+	   mul edx
+	   mov edx, eax
+ 	   mov edx, [y+edx]
+	   jmp LAST_END_LOOP
+
+
+	LAST_END_LOOP:
+           cmp edx, [N]
+           jge END_LOOP
+
+		mov eax, [X+edx]
+		call print_char
+		add edx, 1
+ 
+		jmp LAST_END_LOOP          
+
+    end:
+
+        popa
+        leave
+        ret      
+    
+   ERRORMSG1:
+      mov eax, ermsg
+      call print_string
+      call print_nl
+      popa
+      leave
+      ret
+   
+   ERRORMSG2:
+      mov eax, ermsg2
+      call print_string
+      call print_nl
+      popa
+      leave
+      ret
+
+   ERRORMSG3:
+      mov eax, ermsg3
+      call print_string
+      call print_nl
+      popa
+      leave
+      ret
